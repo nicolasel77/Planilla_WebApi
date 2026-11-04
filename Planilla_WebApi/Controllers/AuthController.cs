@@ -12,7 +12,7 @@ namespace Planilla_WebApi.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        public static User user = new User();
+        public User user = new User();
         private readonly IConfiguration _configuration;
         private readonly IUserService _userService;
 
@@ -29,41 +29,30 @@ namespace Planilla_WebApi.Controllers
             return Ok(userName);
         }
 
-        //[HttpPost("register")]
-        //public async Task<ActionResult<User>> Register(UserDto request)
-        //{
-        //    CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
-
-        //    user.Username = request.Username;
-        //    user.PasswordHash = passwordHash;
-        //    user.PasswordSalt = passwordSalt;
-
-        //    return Ok(user);
-        //}
-
+      
         [HttpPost("login")]
         public async Task<ActionResult<string>> Login(UserDto request)
         {
-            dbDatos db = new dbDatos();
+            dbUsuarios db = new dbUsuarios();
             IList<User> usuaros = db.Usuarios();
 
-            user = usuaros.First(x => x.Username == request.Username);
-
+            user = usuaros.First(x => x.Username.ToLower() == request.Username.ToLower());
 
             if (user == null)
             {
                 return BadRequest("Error en el usuario o contraseña");
             }
-
+            
             if (!VerifyPasswordHash(request.Password, user.PasswordHash, user.PasswordSalt))
             {
                 return BadRequest("Error en el usuario o contraseña");
             }
-
-            string token = CreateToken(user);
-
             var refreshToken = GenerateRefreshToken();
             SetRefreshToken(refreshToken);
+            
+            string a = CreateToken(user);            
+            string [] token = { a, user.Username, user.Sucursal.ToString(), user.NombreSucursal, user.Nivel.ToString(), user.Semana.ToString()};
+
 
             return Ok(token);
         }
@@ -73,11 +62,12 @@ namespace Planilla_WebApi.Controllers
         {
             var refreshToken = Request.Cookies["refreshToken"];
 
-            if (!user.RefreshToken.Equals(refreshToken))
-            {
-                return Unauthorized("Invalid Refresh Token.");
-            }
-            else if (user.TokenExpires < DateTime.Now)
+            //if (!user.RefreshToken.Equals(refreshToken))
+            //{
+            //    return Unauthorized("Invalid Refresh Token.");
+            //}
+            //else
+            if (user.TokenExpires < DateTime.Now)
             {
                 return Unauthorized("Token expired.");
             }
@@ -94,7 +84,7 @@ namespace Planilla_WebApi.Controllers
             var refreshToken = new RefreshToken
             {
                 Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-                Expires = DateTime.Now.AddDays(7),
+                Expires = DateTime.Now.AddDays(3),
                 Created = DateTime.Now
             };
 
